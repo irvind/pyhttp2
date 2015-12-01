@@ -1,4 +1,5 @@
 import string
+import struct
 
 
 def int_to_byte(v):

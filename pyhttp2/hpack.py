@@ -1,7 +1,7 @@
 import struct
 import string
 
-from .utils import chunkify, rchunkify
+from .utils import chunkify, rchunkify, int_to_byte
 
 # chr(x) - int to single char
 # bin(x) - int to bin repr
