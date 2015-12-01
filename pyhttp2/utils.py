@@ -3,11 +3,26 @@ import struct
 
 
 def int_to_byte(v):
+    """
+    Converts integer to single byte.
+    """
     return struct.pack('>B', v)
 
 
 def byte_to_int(b):
+    """
+    Converts byte to integer.
+    """
     return struct.unpack('>B', b)[0]
+
+
+def int_to_bytes(v, n):
+    if n > 8:
+        raise ValueError('n param is too big. 8 is the maximum value.')
+
+    b = struct.pack('>Q', v)
+    b_len = len(b)
+    return b[b_len-n:]
 
 
 def to_bin(v):
@@ -98,7 +113,3 @@ def hex_repr(array):
         right_repr = ''.join(map(to_char, row)) 
         
         print('{: <39} | {}'.format(left_repr, right_repr))
-
-
-def int_to_bytes(v, n):
-    pass
