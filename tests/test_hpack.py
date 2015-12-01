@@ -20,9 +20,6 @@ class TestHPACK(unittest.TestCase):
         with self.assertRaises(ValueError):
             uint_encode(-42, n=5)
 
-    def test_uint_decode(self):
-        pass
-
     def test_decode_encoded_uint(self):
         self.assertEqual(uint_decode(uint_encode(187, n=5), n=5), 187)
         self.assertEqual(uint_decode(uint_encode(78, n=7), n=7), 78)
