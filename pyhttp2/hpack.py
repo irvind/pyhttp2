@@ -131,7 +131,7 @@ def uint_decode(array, n=8):
     return i
 
 
-def bytestr_encode(bytestr, huffman=False):
+def bytestr_encode(bytestr, huffman=False, encoding='ascii'):
     """
     Decodes byte string literal accoriding to [RFC7541, section 5.2]. 
 
@@ -140,8 +140,11 @@ def bytestr_encode(bytestr, huffman=False):
     :param huffman:
         pass
     """
+    if isinstance(bytestr, str):
+        bytestr = bytestr.encode(encoding)
+
     if not isinstance(bytestr, (bytes, bytearray)):
-        pass
+        raise ValueError('bytestr must by an instance of bytes or bytearray')
 
     if huffman:
         raise NotImplementedError()
