@@ -1,8 +1,8 @@
 import unittest
 
-from pyhttp2.utils import byterepr_to_bytes
+from pyhttp2.utils import byterepr_to_bytes, int_to_byte
 from pyhttp2.hpack import (
-    uint_encode, uint_decode
+    uint_encode, uint_decode, bytestr_encode
 )
 
 
@@ -26,12 +26,23 @@ class TestHPACK(unittest.TestCase):
         self.assertEqual(uint_decode(uint_encode(1126)), 1126)
         self.assertEqual(uint_decode(uint_encode(26)), 26)
         self.assertEqual(uint_decode(uint_encode(2000, n=2), n=2), 2000)
-
-    def test_uint_decode(self):
-        pass
         
     def test_bytestr_encode(self):
-        pass
+        self.assertEqual(bytestr_encode(b'Hello, World'), b'\x0cHello, World')
+        self.assertEqual(bytestr_encode('Hi!'), b'\x03Hi!')
+
+        long_bstr = b'.' * 200
+        # encoded 200 = 01111111 (127) + 01001001 (73) = 0x7f49
+        self.assertEqual(bytestr_encode(long_bstr), b'\x7f\x49' + long_bstr)
+
+    def test_bytestr_uncode_encode(self):
+        hello = 'Привет'
+        self.assertEqual(bytestr_encode(hello, encoding='utf-8'), 
+            int_to_byte(len(hello.encode('utf-8'))) + hello.encode('utf-8'))
+
+        long_hello = hello * 100
+        self.assertEqual(bytestr_encode(long_hello, encoding='utf-8'), 
+            uint_encode(len(long_hello.encode('utf-8')), n=7) + long_hello.encode('utf-8'))
 
     def test_bytestr_huffman_encode(self):
         pass
