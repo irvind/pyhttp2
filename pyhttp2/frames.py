@@ -136,3 +136,43 @@ class HeadersFrame(Frame):
 
 class PushPromiseFrame(Frame):
     pass
+
+
+class SettingsFrame(Frame):
+    frame_type = b'\x04'
+
+    SETTINGS_HEADER_TABLE_SIZE = 1
+    SETTINGS_ENABLE_PUSH = 2
+
+    def __init__(self, ack=None, header_table_size=None, enable_push=None, 
+                 *args, **kwargs):
+
+        super().__init__(stream_id=0, *args, **kwargs)
+
+        self.header_table_size = header_table_size
+        self.enable_push = enable_push
+        self.ack = ack
+
+    def make_payload(self):
+        if self.ack is not None and self.ack == True:
+            return b''
+
+        settings = []
+
+        if self.header_table_size is not None:
+            settings.append(
+                self._make_setting(self.SETTINGS_HEADER_TABLE_SIZE, self.header_table_size)
+            )
+
+        if self.enable_push is not None:
+            settings.append(
+                self._make_setting(self.SETTINGS_ENABLE_PUSH, 1 if self.enable_push else 0)
+            )
+        
+        return concat_bytes(*settings)
+
+    def _make_setting(self, _id, val):
+        return concat_bytes(
+            int_to_bytes(_id, 2),
+            int_to_bytes(val, 4)
+        )
