@@ -1,7 +1,7 @@
 import struct
 import string
 
-from .utils import chunkify, rchunkify, int_to_byte
+from .utils import chunkify, rchunkify, int_to_byte, byte_to_int
 
 # chr(x) - int to single char
 # bin(x) - int to bin repr
@@ -158,59 +158,115 @@ def bytestr_encode(bytestr, huffman=False, encoding='ascii'):
     return result
 
 
-# def header_block_encode(headers):
-#     headers = headers.split('\n')
-    
+class IndexTable(object):
+    STATIC_LENGTH = len(_static_table)
 
-# def header_block_decode(header_block):
-#     pass
+    def __init__(self):
+        self._dyn_table = []
 
+    def find(self, name, value=None):
+        return self._find_name(name) if value is None else self._find_field(name, value)
 
-class IndexTable(list):
-    def __init__(self, *args):
-        list.__init__(self, *args)
+    def _find_name(self, name):
+        static_names = [i[0] for i in _static_table]
+        dynaimc_names = [i[0] for i in self._dyn_table]
 
-        # todo static table
+        try:
+            return (static_names + dynaimc_names).index(name) + 1
+        except ValueError:
+            return None
 
-    def find_field(self, name, value):
-        pass
+    def _find_field(self, name, value):
+        try:
+            return (list(_static_table) + self._dyn_table).index((name, value)) + 1
+        except ValueError:
+            return None
 
-    def find_name(self, name):
-        pass
+    def add(self, name, field):
+        self._dyn_table.insert(0, (name, field))
 
-    def add_field(self, name, field):
-        pass
+    def get(self, index):
+        index -= 1
 
+        if index < self.STATIC_LENGTH:
+            return _static_table[index]
+
+        return self._dyn_table[index - self.STATIC_LENGTH]
+
+    def __getitem__(self, index):
+        return self.get(index)
+
+    def __len__(self):
+        return self.STATIC_LENGTH + len(self._dyn_table)
+        
 
 class Encoder(object):
     def __init__(self):
         self.index_table = IndexTable()
 
-    def encode(self, headers):
-        if isinstance(str):
-            headers.encode('ascii')
+    def encode_headers(self, headers):
+        if isinstance(headers, str):
+            headers = headers.encode('ascii')
 
         result = bytearray()
         headers = headers.split(b'\n')
         for header in headers:
             h = header.rsplit(b':', 1)
             h[1] = h[1].strip()
-            result.extend(self._encode_field(h[0], h[1]))
+            result.extend(self.encode_header(h[0], h[1]))
 
-        return result
+        return bytes(result)
 
-    def _encode_field(self, name, value):
-        ind = self.index_table.find_field(name, value)
+    def encode_header(self, name, value):
+        ind = self.index_table.find(name, value)
         if ind is not None:
             return self._encode_indexed_field(ind)
 
-        ind = self.index_table.find_name(name)
-        if ind is not None:
-            return self._encode_indexed_name_field(ind, value)
-            pass
+        ind = self.index_table.find(name)
+        return self._encode_literal_field(
+            name=ind if ind is not None else name, 
+            value=value
+        )
+            
+    def _encode_indexed_field(self, idx):
+        result = uint_encode(idx, n=7)
+        result[0] = 128 | result[0]
+        
+        return result
 
-    def _encode_indexed_field(self, ind):
-        pass
+    def _encode_literal_field(self, name, value, indexed=True, never_indexed=False):
+        if indexed and never_indexed:
+            raise ValueError()
+
+        if isinstance(name, int):
+            header = uint_encode(name, n=6 if indexed else 4)
+        else:
+            header = bytearray(b'\x00')
+
+        _map = {
+            (True, False): b'\x40',
+            (False, False): b'\x00',
+            (False, True): b'\x10',
+        }
+  
+        header[0] = byte_to_int(
+            _map[(indexed, never_indexed)]
+        ) | header[0]
+
+        result = header
+
+        if isinstance(name, bytes):
+            l = uint_encode(len(name), n=7)
+            # l[0] = 128 | l[0]
+            l.extend(name)
+            result.extend(l)
+
+        l = uint_encode(len(value), n=7)
+        # l[0] = 128 | l[0]
+        l.extend(value)
+        result.extend(l)
+
+        return bytes(result)
 
 
 class Decoder(object):
