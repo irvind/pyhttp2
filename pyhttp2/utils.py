@@ -113,3 +113,17 @@ def hex_repr(array):
         right_repr = ''.join(map(to_char, row)) 
         
         print('{: <39} | {}'.format(left_repr, right_repr))
+
+
+def concat_bytes(*args):
+    arr = bytearray()
+    for b in args:
+        if b is None:
+            continue
+
+        if isinstance(b, (list, tuple)):
+            b = concat_bytes(*b)
+
+        arr.extend(b)
+
+    return bytes(arr)
