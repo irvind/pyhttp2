@@ -2,14 +2,6 @@ from .utils import int_to_bytes, int_to_byte, concat_bytes
 from .hpack import Encoder
 
 
-# Length 24 
-# Type 8
-# Flags 8
-# R 1
-# Stream ID 31
-#######
-# Payload
-
 class Frame(object):
     frame_type = None
 
@@ -47,6 +39,14 @@ class Frame(object):
             raise Exception()
 
         return bytes(self.payload)
+
+    @classmethod
+    def _flags_byte(cls, *ints):
+        flags = 0
+        for i in ints:
+            flags |= i
+
+        return int_to_byte(flags)
         
 
 class DataFrame(Frame):
@@ -58,12 +58,10 @@ class DataFrame(Frame):
         self.data = data
         self.padding = padding
 
-        flags = 0
-        if end_stream:
-            flags |= 0x1
-        if padding:
-            flags |= 0x8
-        self.flags = int_to_byte(flags)
+        self.flags = self._flags_byte(
+            0x1 if end_stream else None,
+            0x8 if padding else None
+        )
 
     def _make_payload(self):
         return concat_bytes(
@@ -72,13 +70,6 @@ class DataFrame(Frame):
             b'\x00' * self.padding if self.padding else None
         )
 
-
-# Pad length 8? (if padded)
-# E 1? (stream dependency is exclusive) (if priority)
-# Stream Dependency 31? (if priority)
-# Weight 8? (if priority)
-# Header Block Fragment *
-# Padding *
         
 class HeadersFrame(Frame):
     frame_type = b'\x01'
@@ -98,16 +89,12 @@ class HeadersFrame(Frame):
         if encoder is None:
             self.encoder = Encoder()
 
-        flags = 0
-        if end_stream:
-            flags |= 0x1
-        if end_headers:
-            flags |= 0x4
-        if padding:
-            flags |= 0x8
-        if stream_dep:
-            flags |= 0x20
-        self.flags = int_to_byte(flags)
+        self.flags = self._flags_byte(
+            0x1 if end_stream else None,
+            0x4 if end_headers else None,
+            0x8 if padding else None,
+            0x20 if stream_dep else None
+        )
 
     def _make_payload(self):
         return concat_bytes(
@@ -143,6 +130,8 @@ class SettingsFrame(Frame):
         self.header_table_size = header_table_size
         self.enable_push = enable_push
         self.ack = ack
+
+        self.flags = self._flags_byte(0x1 if ack else None)
 
     def _make_payload(self):
         if self.ack is not None and self.ack == True:
