@@ -27,20 +27,9 @@ class Frame(object):
         if frame_type:
             self.frame_type = frame_type
 
-    def make_payload(self):
-        if self.payload is None:
-            raise Exception()
-
-        return bytes(self.payload)
-
-    def make_frame(self):
+    def to_bytes(self):
         if not self.frame_type:
             raise Exception()
-
-        # if payload is None:
-        #     payload = self.payload
-
-        # payload_len = len(payload)
 
         payload = self.make_payload()
         payload_len = len(payload)
@@ -52,6 +41,12 @@ class Frame(object):
             self.stream_id,
             payload
         )
+
+    def _make_payload(self):
+        if self.payload is None:
+            raise Exception()
+
+        return bytes(self.payload)
         
 
 class DataFrame(Frame):
@@ -70,7 +65,7 @@ class DataFrame(Frame):
             flags |= 0x8
         self.flags = int_to_byte(flags)
 
-    def make_payload(self):
+    def _make_payload(self):
         return concat_bytes(
             int_to_byte(self.padding) if self.padding else None,
             self.data,
@@ -114,7 +109,7 @@ class HeadersFrame(Frame):
             flags |= 0x20
         self.flags = int_to_byte(flags)
 
-    def make_payload(self):
+    def _make_payload(self):
         return concat_bytes(
             int_to_byte(self.padding) if self.padding else None,
             self._make_dep() if self.stream_dep else None
@@ -134,10 +129,6 @@ class HeadersFrame(Frame):
         return dep, weight
 
 
-class PushPromiseFrame(Frame):
-    pass
-
-
 class SettingsFrame(Frame):
     frame_type = b'\x04'
 
@@ -153,7 +144,7 @@ class SettingsFrame(Frame):
         self.enable_push = enable_push
         self.ack = ack
 
-    def make_payload(self):
+    def _make_payload(self):
         if self.ack is not None and self.ack == True:
             return b''
 
